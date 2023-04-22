@@ -4,6 +4,7 @@ import pandas as pd
 
 class Gamezmania():
     """read and parse a json from cardzmania"""
+
     def __init__(self, filename) -> None:
         with open(filename, 'r') as j:
             self.raw_data = json.load(j)
@@ -15,8 +16,11 @@ class Gamezmania():
         """Map the order to the player id """
         return {i: x['id'] for i, x in enumerate(self.raw_data['g']['i']['p'])}
 
-    def make_score_dataframe(self):
+    def make_score_dataframe(self, player_map=None):
         """make a datafraem of the scores"""
+
+        if not player_map:
+            player_map = {}
         out = []
 
         for r, record in enumerate(self.raw_data['g']['r']):
@@ -31,4 +35,8 @@ class Gamezmania():
             'player': self.name_map[i],
             'points': x.get('pts', 0)
         } for i, x in enumerate(self.raw_data['g']['result']['p'])])
-        return pd.DataFrame(out)
+
+        df = pd.DataFrame(out)
+        if player_map:
+            df['player'] = df['player'].map(player_map)
+        return df
