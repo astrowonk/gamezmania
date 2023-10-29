@@ -1,5 +1,7 @@
 import json
 import pandas as pd
+import hashlib
+from collections import deque
 
 MAPPING_DICT = {
     'C': 'clubs',
@@ -16,9 +18,11 @@ MAPPING_DICT = {
 class Gamezmania():
     """read and parse a json from cardzmania"""
 
-    def __init__(self, filename) -> None:
+    def __init__(self, filename, custom_player_map=None) -> None:
         with open(filename, 'r') as j:
             self.raw_data = json.load(j)
+        self.file_name = filename
+        self.custom_player_map = custom_player_map
 
         self.name_map = self.make_name_map()
         self.score_df = self.make_score_dataframe()
@@ -39,11 +43,13 @@ class Gamezmania():
         better_data = self.raw_data['g']['n']
         is_new_round = False
         the_round = 0
-        for row in better_data:
+        for row_num, row in enumerate(better_data):
 
             if 'c' in row:
                 if not is_new_round:
                     the_round += 1
+                    first_player = 0 + the_round - 1
+
                     is_new_round = True
                 for i, bid in enumerate(row['c']):
                     new_dict = {}
@@ -53,15 +59,20 @@ class Gamezmania():
                     out.append(new_dict)
 
             elif 'pl' in row and row['pl']:
-                for i, card in enumerate(row['pl']):
+                card_data = deque(row['pl'])
+                # print(f"Rotating {first_player} + {the_round - 1}")
+                card_data.rotate(first_player)
+                for i, card in enumerate(card_data):
                     new_dict = {}
                     new_dict['player'] = self.name_map[i]
                     rank, suit = self.parse_card_string(card)
                     new_dict['card_rank'] = rank
                     new_dict['card_suit'] = suit
                     new_dict['round'] = the_round
-                    is_new_round = False
                     out.append(new_dict)
+                first_player = row['g']
+                is_new_round = False
+
             elif 'tram' in row:
                 for player, cards in enumerate(row['tram']):
                     for i, card in enumerate(cards):
@@ -70,16 +81,32 @@ class Gamezmania():
                         rank, suit = self.parse_card_string(card)
                         new_dict['card_rank'] = rank
                         new_dict['card_suit'] = suit
-                        new_dict['round'] = the_round + 1 + i
+                        new_dict['round'] = the_round
                         new_dict['tram'] = True
                         out.append(new_dict)
+                is_new_round = False
 
         df = pd.DataFrame(out)
-        df['tram'] = df['tram'].fillna(False)
+        if 'tram' in df.columns:
+            df['tram'] = df['tram'].fillna(False)
+        else:
+            df['tram'] = False
 
-        df['bad_card'] = df['card_rank'].isin(['9', '8', 'T',
+        df['bad_card'] = df['card_rank'].isin(['9', '8', 'T', '7',
                                                'J']).astype(bool)
-        #df['unique_game_id'] = self.raw_data['v']
+        self.make_trump_map()
+        df['is_trump'] = df.assign(
+            map_key=lambda x: x['round'].astype('str') + '_' + x['card_suit']
+        )['map_key'].apply(lambda x: self.trump_map.get(x, False))
+        df.loc[df['is_trump'] == True, 'bad_card'] = False
+
+        df['unique_hash'] = hashlib.sha224(
+            self.raw_data['g']['c'].encode()).hexdigest()[:20]
+        if self.custom_player_map:
+            df['player'] = df['player'].apply(
+                lambda x: self.custom_player_map.get(x, x))
+        df['file_name'] = self.file_name
+        df['ace_flag'] = (df['card_rank'] == 'ace')
         return df
 
     def make_trump_map(self):
@@ -88,42 +115,9 @@ class Gamezmania():
             rank, suit = self.parse_card_string(row['tp'])
             self.trump_map[f"{round + 1}_{suit}"] = True
 
-    def parse_wrong_oh_data(self):
-        n_players = len(self.name_map)
-        out = []
-        round_data = self.raw_data['g']['c']
-        is_new_round = False
-        the_round = 0
-        for i, res in enumerate(round_data.split(',')):
-            if res == '-1':
-                break
-            new_dict = {}
-            new_dict['player'] = self.name_map[(i % n_players)]
-            if res.isdigit():
-                new_dict['bid'] = int(res)
-                if not is_new_round:
-                    the_round += 1
-                    is_new_round = True
-                new_dict['round'] = the_round
-
-            else:
-                rank, suit = self.parse_card_string(res)
-                new_dict['card_rank'] = rank
-                new_dict['card_suit'] = suit
-                new_dict['round'] = the_round
-                is_new_round = False
-            out.append(new_dict)
-        df = pd.DataFrame(out)
-        df['bad_card'] = df['card_rank'].isin(['9', '8', 'T',
-                                               'J']).astype(bool)
-
-        return df
-
-    def make_score_dataframe(self, player_map=None):
+    def make_score_dataframe(self):
         """make a datafraem of the scores"""
 
-        if not player_map:
-            player_map = {}
         out = []
 
         for r, record in enumerate(self.raw_data['g']['r']):
@@ -140,6 +134,7 @@ class Gamezmania():
         } for i, x in enumerate(self.raw_data['g']['result']['p'])])
 
         df = pd.DataFrame(out)
-        if player_map:
-            df['player'] = df['player'].map(player_map)
+        if self.custom_player_map:
+            df['player'] = df['player'].apply(
+                lambda x: self.custom_player_map.get(x, x))
         return df
