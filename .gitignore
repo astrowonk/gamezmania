@@ -3,3 +3,4 @@ __pycache__/
 *.ipynb
 oh_hell.db
 *.csv
+*.js

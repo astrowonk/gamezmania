@@ -2,6 +2,8 @@ import json
 import pandas as pd
 import hashlib
 from collections import deque
+from sqlalchemy import create_engine
+from sqlalchemy.exc import OperationalError
 
 MAPPING_DICT = {
     'C': 'clubs',
@@ -74,6 +76,7 @@ class Gamezmania():
                     new_dict['card_order'] = card_order[i]
                     new_dict['round'] = the_round
                     new_dict['hand'] = hand_number
+                    new_dict['winner'] = True if i == row['g'] else False
                     out.append(new_dict)
                 first_player = row['g']
                 hand_number += 1
@@ -105,7 +108,7 @@ class Gamezmania():
         )['map_key'].apply(lambda x: self.trump_map.get(x, False))
         df.loc[df['is_trump'] == True, 'bad_card'] = False
 
-        df['unique_hash'] = hashlib.sha224(
+        self.unique_hash = df['unique_hash'] = hashlib.sha224(
             self.raw_data['g']['c'].encode()).hexdigest()[:20]
         if self.custom_player_map:
             df['player'] = df['player'].apply(
@@ -143,3 +146,31 @@ class Gamezmania():
             df['player'] = df['player'].apply(
                 lambda x: self.custom_player_map.get(x, x))
         return df
+
+    def _upload(self, data: pd.DataFrame, table_name: str):
+        con = create_engine("sqlite:///oh_hell.db")
+        try:
+            hashes = [
+                x[0] for x in con.execute(
+                    f"select distinct (unique_hash) from {table_name};")
+            ]
+        except OperationalError:
+            print('hash fail')
+            hashes = set()
+
+        if self.unique_hash in hashes:
+            print("game already in DB")
+            return
+
+        data.to_sql(table_name, con=con, if_exists='append')
+
+    def upload_to_sql(self):
+        oh_hell_data = self.parse_oh_data()
+        score_df = self.make_score_dataframe()
+        bid_only = oh_hell_data.query("bid.notna()").dropna(axis=1).drop(
+            columns=['tram', 'bad_card', 'is_trump'])
+        no_bids = oh_hell_data.query("bid.isna()").drop(columns=['bid'])
+        self._upload(bid_only, 'bids')
+        self._upload(oh_hell_data, 'rounds')
+        score_df['unique_hash'] = oh_hell_data['unique_hash'].iloc[0]
+        self._upload(score_df, 'scores')
