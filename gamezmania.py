@@ -47,12 +47,9 @@ class Gamezmania():
         for row_num, row in enumerate(better_data):
 
             if 'c' in row:
-                if not is_new_round:
-                    the_round += 1
-                    first_player = 0 + the_round - 1
-
-                    is_new_round = True
-                    hand_number = 1
+                the_round += 1
+                first_player = 0 + the_round - 1
+                hand_number = 1
                 for i, bid in enumerate(row['c']):
                     new_dict = {}
                     new_dict['round'] = the_round
@@ -79,7 +76,6 @@ class Gamezmania():
                     new_dict['hand'] = hand_number
                     out.append(new_dict)
                 first_player = row['g']
-                is_new_round = False
                 hand_number += 1
 
             elif 'tram' in row:
