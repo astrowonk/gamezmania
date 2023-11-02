@@ -20,9 +20,15 @@ MAPPING_DICT = {
 class Gamezmania():
     """read and parse a json from cardzmania"""
 
-    def __init__(self, filename, custom_player_map=None) -> None:
-        with open(filename, 'r') as j:
-            self.raw_data = json.load(j)
+    def __init__(self,
+                 filename=None,
+                 raw_data=None,
+                 custom_player_map=None) -> None:
+        if filename:
+            with open(filename, 'r') as j:
+                self.raw_data = json.load(j)
+        else:
+            self.raw_data = raw_data
         self.file_name = filename
         self.custom_player_map = custom_player_map
 
@@ -160,9 +166,10 @@ class Gamezmania():
 
         if self.unique_hash in hashes:
             print("game already in DB")
-            return
+            return 'game already in DB'
 
-        data.to_sql(table_name, con=con, if_exists='append')
+        data.to_sql(table_name, con=con, if_exists='append', index=False)
+        return f'success for {table_name}'
 
     def upload_to_sql(self):
         oh_hell_data = self.parse_oh_data()
@@ -170,7 +177,9 @@ class Gamezmania():
         bid_only = oh_hell_data.query("bid.notna()").dropna(axis=1).drop(
             columns=['tram', 'bad_card', 'is_trump'])
         no_bids = oh_hell_data.query("bid.isna()").drop(columns=['bid'])
-        self._upload(bid_only, 'bids')
-        self._upload(oh_hell_data, 'rounds')
         score_df['unique_hash'] = oh_hell_data['unique_hash'].iloc[0]
-        self._upload(score_df, 'scores')
+        response = []
+        response.append(self._upload(bid_only, 'bids'))
+        response.append(self._upload(no_bids, 'rounds'))
+        response.append(self._upload(score_df, 'scores'))
+        return response
