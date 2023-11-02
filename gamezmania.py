@@ -24,11 +24,12 @@ class Gamezmania():
                  filename=None,
                  raw_data=None,
                  custom_player_map=None) -> None:
-        if filename:
+        if raw_data:
+            self.raw_data = raw_data
+        elif filename:
             with open(filename, 'r') as j:
                 self.raw_data = json.load(j)
-        else:
-            self.raw_data = raw_data
+
         self.file_name = filename
         self.custom_player_map = custom_player_map
 
@@ -166,7 +167,7 @@ class Gamezmania():
 
         if self.unique_hash in hashes:
             print("game already in DB")
-            return 'game already in DB'
+            return f'game already in DB {self.unique_hash}'
 
         data.to_sql(table_name, con=con, if_exists='append', index=False)
         return f'success for {table_name}'
@@ -177,7 +178,7 @@ class Gamezmania():
         bid_only = oh_hell_data.query("bid.notna()").dropna(axis=1).drop(
             columns=['tram', 'bad_card', 'is_trump'])
         no_bids = oh_hell_data.query("bid.isna()").drop(columns=['bid'])
-        score_df['unique_hash'] = oh_hell_data['unique_hash'].iloc[0]
+        score_df['unique_hash'] = self.unique_hash
         response = []
         response.append(self._upload(bid_only, 'bids'))
         response.append(self._upload(no_bids, 'rounds'))
