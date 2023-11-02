@@ -152,6 +152,9 @@ class Gamezmania():
         if self.custom_player_map:
             df['player'] = df['player'].apply(
                 lambda x: self.custom_player_map.get(x, x))
+        df['round_points'] = df.groupby('player')['points'].shift(
+            0) - df.groupby('player')['points'].shift(1)
+        df['file_name'] = self.file_name
         return df
 
     def _upload(self, data: pd.DataFrame, table_name: str):
@@ -172,13 +175,30 @@ class Gamezmania():
         data.to_sql(table_name, con=con, if_exists='append', index=False)
         return f'success for {table_name}'
 
+    def enhance_score_df(self, _score_df, bid_only, no_bids):
+        score_df = _score_df.set_index(['round', 'player'])
+        bid_map = bid_only.set_index(['round', 'player'])['bid']
+        taken_map = no_bids.groupby(['round', 'player'])['winner'].sum()
+        total_card_map = no_bids.groupby('round')['winner'].sum()
+        tram_map = no_bids.groupby('round')['tram'].sum() / len(self.name_map)
+        total_card_map = (total_card_map + tram_map).astype(int)
+        score_df['bid'] = bid_map
+        score_df['taken'] = taken_map
+        score_df['bid'] = score_df['bid'].astype(int)
+        score_df = score_df.reset_index()
+        score_df['total_cards'] = score_df['round'].map(total_card_map)
+        score_df['total_bid'] = score_df.groupby('round')['bid'].transform(
+            'sum')
+        return score_df
+
     def upload_to_sql(self):
         oh_hell_data = self.parse_oh_data()
-        score_df = self.make_score_dataframe()
+        score_df = self.make_score_dataframe().query("round > 0")
         bid_only = oh_hell_data.query("bid.notna()").dropna(axis=1).drop(
             columns=['tram', 'bad_card', 'is_trump'])
         no_bids = oh_hell_data.query("bid.isna()").drop(columns=['bid'])
         score_df['unique_hash'] = self.unique_hash
+        score_df = self.enhance_score_df(score_df, bid_only, no_bids)
         response = []
         response.append(self._upload(bid_only, 'bids'))
         response.append(self._upload(no_bids, 'rounds'))
