@@ -7,7 +7,22 @@ import dash_bootstrap_components as dbc
 from gamezmania import Gamezmania
 import json
 
-app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
+from pathlib import Path
+
+parent_dir = Path().absolute().stem
+
+app = Dash(__name__,
+           url_base_pathname=f"/dash/{parent_dir}/",
+           external_stylesheets=[dbc.themes.YETI],
+           title="Uploader",
+           meta_tags=[
+               {
+                   "name": "viewport",
+                   "content": "width=device-width, initial-scale=1"
+               },
+           ])
+
+server = app.server
 
 tab1 = dbc.Tab(
     html.Div([
