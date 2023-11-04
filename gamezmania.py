@@ -109,7 +109,7 @@ class Gamezmania():
             df['tram'] = False
 
         df['bad_card'] = df['card_rank'].isin(['9', '8', 'T', '7',
-                                               'J']).astype(bool)
+                                               'jack']).astype(bool)
         self.make_trump_map()
         df['is_trump'] = df.assign(
             map_key=lambda x: x['round'].astype('str') + '_' + x['card_suit']
@@ -118,7 +118,7 @@ class Gamezmania():
         df.loc[:, 'n_cards_suit_round'] = df.groupby(
             ['round', 'player', 'card_suit'])['card_rank'].transform('count')
         df.loc[:, 'bad_singleton'] = df['card_rank'].isin([
-            '6', '7', '8', '9', '10', 'J', 'Q', 'K'
+            '7', '8', '9', 'T', 'jack', 'queen', 'king'
         ]) & (df['n_cards_suit_round'] == 1)
         self.unique_hash = df['unique_hash'] = hashlib.sha224(
             self.raw_data['g']['c'].encode()).hexdigest()[:20]
