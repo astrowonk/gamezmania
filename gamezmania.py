@@ -98,8 +98,8 @@ class Gamezmania():
                         new_dict['card_suit'] = suit
                         new_dict['round'] = the_round
                         new_dict['tram'] = True
+                        new_dict['winner'] = True if i == row['g'] else False
                         out.append(new_dict)
-                is_new_round = False
 
         df = pd.DataFrame(out).convert_dtypes('pyarrow')
         if 'tram' in df.columns:
