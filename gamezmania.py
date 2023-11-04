@@ -115,7 +115,11 @@ class Gamezmania():
             map_key=lambda x: x['round'].astype('str') + '_' + x['card_suit']
         )['map_key'].apply(lambda x: self.trump_map.get(x, False))
         df.loc[df['is_trump'] == True, 'bad_card'] = False
-
+        df.loc[:, 'n_cards_suit_round'] = df.groupby(
+            ['round', 'player', 'card_suit'])['card_rank'].transform('count')
+        df.loc[:, 'bad_singleton'] = df['card_rank'].isin([
+            '6', '7', '8', '9', '10', 'J', 'Q', 'K'
+        ]) & (df['n_cards_suit_round'] == 1)
         self.unique_hash = df['unique_hash'] = hashlib.sha224(
             self.raw_data['g']['c'].encode()).hexdigest()[:20]
         if self.custom_player_map:
@@ -123,6 +127,7 @@ class Gamezmania():
                 lambda x: self.custom_player_map.get(x, x))
         df['file_name'] = self.file_name
         df['ace_flag'] = (df['card_rank'] == 'ace')
+
         return df
 
     def make_trump_map(self):
