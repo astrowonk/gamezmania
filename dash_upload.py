@@ -7,6 +7,7 @@ import dash_bootstrap_components as dbc
 from gamezmania import Gamezmania
 import json
 
+
 from pathlib import Path
 
 parent_dir = Path().absolute().stem
@@ -79,6 +80,9 @@ def update_output(list_of_contents, list_of_names, list_of_dates):
     res = []
     for g in out:
         res.extend([html.P(x) for x in g.upload_to_sql()])
+
+    for g in out:
+
 
     return res
 
