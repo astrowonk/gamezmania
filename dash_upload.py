@@ -5,8 +5,8 @@ import datetime
 
 import dash_bootstrap_components as dbc
 from gamezmania import Gamezmania
+from predictions import PredictBid
 import json
-
 
 from pathlib import Path
 
@@ -82,7 +82,8 @@ def update_output(list_of_contents, list_of_names, list_of_dates):
         res.extend([html.P(x) for x in g.upload_to_sql()])
 
     for g in out:
-
+        p = PredictBid()
+        res.append(p.train(g.unique_hash))
 
     return res
 

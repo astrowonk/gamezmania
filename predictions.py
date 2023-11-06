@@ -2,6 +2,7 @@ import pandas as pd
 from xgboost import XGBClassifier
 from sqlalchemy import create_engine
 from sklearn.model_selection import train_test_split
+from sqlalchemy.exc import OperationalError
 
 
 def make_delta_columns(df, column1, column2):
@@ -118,8 +119,21 @@ class PredictBid:
         test_data['prediction'] = xgb.predict_proba(test_data[cols_train])[:,
                                                                            1]
         con = create_engine("sqlite:///oh_hell.db")
+        try:
+            hashes = [
+                x[0] for x in con.execute(
+                    f"select distinct (unique_hash) from predictions;")
+            ]
+        except OperationalError:
+            print('hash fail')
+            hashes = set()
+
+        if unique_hash in hashes:
+            print("game already in DB")
+            return f'game hash {unique_hash} already in prediction DB '
         test_data.groupby(['player', 'unique_hash'])[[
             'prediction'
         ]].sum().reset_index().to_sql('predictions',
                                       if_exists='append',
                                       con=con)
+        return "success for predictions"

@@ -175,8 +175,8 @@ class Gamezmania():
             hashes = set()
 
         if self.unique_hash in hashes:
-            print("game already in DB")
-            return f'game already in DB {self.unique_hash}'
+            print(f"game {self.unique_hash }already in DB")
+            return f'game already in {table_name} DB {self.unique_hash}'
 
         data.to_sql(table_name, con=con, if_exists='append', index=False)
         return f'success for {table_name}'
