@@ -26,6 +26,8 @@ class Gamezmania():
                  custom_player_map=None) -> None:
         if raw_data:
             self.raw_data = raw_data
+            with open(filename, 'w') as f:
+                json.dump(raw_data, f)
         elif filename:
             with open(filename, 'r') as j:
                 self.raw_data = json.load(j)
@@ -186,8 +188,8 @@ class Gamezmania():
         bid_map = bid_only.set_index(['round', 'player'])['bid']
         taken_map = no_bids.groupby(['round', 'player'])['winner'].sum()
         total_card_map = no_bids.groupby('round')['winner'].sum()
-        tram_map = no_bids.groupby('round')['tram'].sum() / len(self.name_map)
-        total_card_map = (total_card_map + tram_map).astype(int)
+        #tram_map = no_bids.groupby('round')['tram'].sum() / len(self.name_map)
+        total_card_map = (total_card_map).astype(int)
         score_df['bid'] = bid_map
         score_df['taken'] = taken_map
         score_df['bid'] = score_df['bid'].astype(int)

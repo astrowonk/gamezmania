@@ -76,6 +76,24 @@ class PredictBid:
         self.final_training = self.final_training.set_index(
             ['unique_hash', 'round', 'player']).join(dealer_map).reset_index()
 
+    def _upload(self, data: pd.DataFrame, table_name: str, unique_hash: str):
+        con = create_engine("sqlite:///oh_hell.db")
+        try:
+            hashes = [
+                x[0] for x in con.execute(
+                    f"select distinct (unique_hash) from {table_name};")
+            ]
+        except OperationalError:
+            print('hash fail')
+            hashes = set()
+
+        if unique_hash in hashes:
+            print(f"game {unique_hash }already in DB")
+            return f'game already in {table_name} DB {unique_hash}'
+
+        data.to_sql(table_name, con=con, if_exists='append', index=False)
+        return f'success for {table_name}'
+
     def train(self, unique_hash):
         """Train excluding one game to not overfit"""
         train_data = self.final_training.query("unique_hash != @unique_hash")
@@ -86,7 +104,8 @@ class PredictBid:
                             early_stopping_rounds=10,
                             learning_rate=.15,
                             max_depth=3,
-                            objective='binary:logistic')
+                            objective='binary:logistic',
+                            random_state=42)
 
         cols_train = [
             'is_trump',
@@ -119,21 +138,4 @@ class PredictBid:
         test_data['prediction'] = xgb.predict_proba(test_data[cols_train])[:,
                                                                            1]
         con = create_engine("sqlite:///oh_hell.db")
-        try:
-            hashes = [
-                x[0] for x in con.execute(
-                    f"select distinct (unique_hash) from predictions;")
-            ]
-        except OperationalError:
-            print('hash fail')
-            hashes = set()
-
-        if unique_hash in hashes:
-            print("game already in DB")
-            return f'game hash {unique_hash} already in prediction DB '
-        test_data.groupby(['player', 'unique_hash'])[[
-            'prediction'
-        ]].sum().reset_index().to_sql('predictions',
-                                      if_exists='append',
-                                      con=con)
-        return "success for predictions"
+        return self._upload(test_data, 'predictions_detail', unique_hash)
