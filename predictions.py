@@ -3,6 +3,7 @@ from xgboost import XGBClassifier
 from sqlalchemy import create_engine
 from sklearn.model_selection import train_test_split
 from sqlalchemy.exc import OperationalError
+from tqdm.notebook import tqdm
 
 
 def make_delta_columns(df, column1, column2):
@@ -61,12 +62,16 @@ class PredictBid:
                 'total_cards',
                 'total_bid_minus_total_cards',
             ]]
+        trump_data = pd.get_dummies(
+            self.df_rounds.query('is_trump == True')['card_rank'],
+            prefix='trump').astype('int')
         score_data_training['made_bid'] = (
             score_data_training['taken_minus_bid'] == 0).astype(int)
         df_training = pd.get_dummies(self.df_rounds, columns=['card_rank'])
+        df_training = df_training.join(trump_data).fillna(0)
         cols = ['is_trump'] + [
             col for col in df_training.columns if col.startswith('card_rank_')
-        ]
+        ] + list(trump_data.columns)
         df_training_cards = df_training.groupby(
             ['unique_hash', 'player', 'round'])[cols].sum()
         self.final_training = df_training_cards.join(
@@ -94,16 +99,20 @@ class PredictBid:
         data.to_sql(table_name, con=con, if_exists='append', index=False)
         return f'success for {table_name}'
 
-    def train(self, unique_hash):
+    def train_and_upload_all(self):
+        for hash in tqdm(self.df_scores['unique_hash'].unique()):
+            self.train(hash)
+
+    def train(self, unique_hash, upload=True):
         """Train excluding one game to not overfit"""
         train_data = self.final_training.query("unique_hash != @unique_hash")
         test_data = self.final_training.query("unique_hash == @unique_hash")
-        xgb = XGBClassifier(n_estimators=100,
-                            min_child_weight=1.2,
+        xgb = XGBClassifier(n_estimators=130,
+                            min_child_weight=1.5,
                             eval_metric='logloss',
                             early_stopping_rounds=10,
-                            learning_rate=.15,
-                            max_depth=3,
+                            learning_rate=.05,
+                            max_depth=5,
                             objective='binary:logistic',
                             random_state=42)
 
@@ -126,6 +135,19 @@ class PredictBid:
             'total_cards',
             'total_bid_minus_total_cards',
             'card_order',
+            'trump_2',
+            'trump_3',
+            'trump_4',
+            'trump_5',
+            'trump_6',
+            'trump_7',
+            'trump_8',
+            'trump_9',
+            'trump_T',
+            'trump_ace',
+            'trump_jack',
+            'trump_king',
+            'trump_queen',
         ]
         X = train_data[cols_train]
         y = train_data['made_bid']
@@ -138,4 +160,7 @@ class PredictBid:
         test_data['prediction'] = xgb.predict_proba(test_data[cols_train])[:,
                                                                            1]
         con = create_engine("sqlite:///oh_hell.db")
-        return self._upload(test_data, 'predictions_detail', unique_hash)
+        if upload:
+            return self._upload(test_data, 'predictions_detail', unique_hash)
+        else:
+            return xgb
