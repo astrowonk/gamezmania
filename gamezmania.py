@@ -166,22 +166,23 @@ class Gamezmania():
         return df
 
     def _upload(self, data: pd.DataFrame, table_name: str):
-        con = create_engine("sqlite:///oh_hell.db")
-        try:
-            hashes = [
-                x[0] for x in con.execute(
-                    f"select distinct (unique_hash) from {table_name};")
-            ]
-        except OperationalError:
-            print('hash fail')
-            hashes = set()
+        engine = create_engine("sqlite:///oh_hell.db")
+        with engine.connect() as con:
+            try:
+                hashes = [
+                    x[0] for x in con.execute(
+                        f"select distinct (unique_hash) from {table_name};")
+                ]
+            except OperationalError:
+                print('hash fail')
+                hashes = set()
 
-        if self.unique_hash in hashes:
-            print(f"game {self.unique_hash }already in DB")
-            return f'game already in {table_name} DB {self.unique_hash}'
+            if self.unique_hash in hashes:
+                print(f"game {self.unique_hash }already in DB")
+                return f'game already in {table_name} DB {self.unique_hash}'
 
-        data.to_sql(table_name, con=con, if_exists='append', index=False)
-        return f'success for {table_name}'
+            data.to_sql(table_name, con=con, if_exists='append', index=False)
+            return f'success for {table_name}'
 
     def enhance_score_df(self, _score_df, bid_only, no_bids):
         score_df = _score_df.set_index(['round', 'player'])

@@ -4,3 +4,5 @@ __pycache__/
 oh_hell.db
 *.csv
 *.js
+oh_hell.duckdb
+oh_hell.duckdb.wal
