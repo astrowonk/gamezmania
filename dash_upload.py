@@ -56,7 +56,20 @@ tab2 = dbc.Tab(label="Add Player Name Mapping",
                    dbc.Button(id='player-button', children="Submit"),
                ])))
 
-app.layout = dbc.Container(dbc.Tabs([tab1, tab2]))
+tab3 = dbc.Tab([
+    dcc.Markdown("""### How to get game JSON DATA
+
+Use the web inspector in your browser when looking at a game history to find the hidden XHR request that has the needed JSON data. Be sure to save this with a file name as a date such as 2023-01-01.json, etc.
+
+There are two XHR requests, one is short with metadata, the other has the needed game data and starts with `{"g":{"i}` .... 
+                             
+
+                             """),
+    html.Img(src=app.get_asset_url('chrome.png'), style={'width': '80%'})
+],
+               label='How to save game data JSON')
+
+app.layout = dbc.Container(dbc.Tabs([tab1, tab2, tab3]))
 
 
 def parse_contents(contents):
