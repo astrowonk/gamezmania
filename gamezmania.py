@@ -3,6 +3,8 @@ import pandas as pd
 import hashlib
 from collections import deque
 from sqlalchemy import create_engine
+from sqlalchemy import text
+
 from sqlalchemy.exc import OperationalError
 
 MAPPING_DICT = {
@@ -171,7 +173,9 @@ class Gamezmania():
             try:
                 hashes = [
                     x[0] for x in con.execute(
-                        f"select distinct (unique_hash) from {table_name};")
+                        text(
+                            f"select distinct (unique_hash) from {table_name};"
+                        ))
                 ]
             except OperationalError:
                 print('hash fail')

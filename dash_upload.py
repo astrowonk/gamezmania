@@ -1,7 +1,6 @@
 import base64
 import json
 from dash import Dash, dcc, html, dash_table, Input, Output, State, callback
-import datetime
 
 import dash_bootstrap_components as dbc
 from gamezmania import Gamezmania
