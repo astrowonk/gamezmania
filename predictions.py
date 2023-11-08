@@ -101,7 +101,7 @@ class PredictBid:
             print(f"game {unique_hash }already in DB")
             return f'game already in {table_name} DB {unique_hash}'
 
-        data.to_sql(table_name, con=con, if_exists='append', index=False)
+        data.to_sql(table_name, con=engine, if_exists='append', index=False)
         return f'success for {table_name}'
 
     def train_and_upload_all(self):
