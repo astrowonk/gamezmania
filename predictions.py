@@ -1,6 +1,7 @@
 import pandas as pd
 from xgboost import XGBClassifier
 from sqlalchemy import create_engine
+from sqlalchemy import text
 from sklearn.model_selection import train_test_split
 from sqlalchemy.exc import OperationalError
 from tqdm.notebook import tqdm
@@ -82,15 +83,19 @@ class PredictBid:
             ['unique_hash', 'round', 'player']).join(dealer_map).reset_index()
 
     def _upload(self, data: pd.DataFrame, table_name: str, unique_hash: str):
-        con = create_engine("sqlite:///oh_hell.db")
-        try:
-            hashes = [
-                x[0] for x in con.execute(
-                    f"select distinct (unique_hash) from {table_name};")
-            ]
-        except OperationalError:
-            print('hash fail')
-            hashes = set()
+        engine = create_engine("sqlite:///oh_hell.db")
+        with engine.connect() as con:
+            try:
+                hashes = {
+                    x[0]
+                    for x in con.execute(
+                        text(
+                            f"select distinct (unique_hash) from {table_name};"
+                        ))
+                }
+            except OperationalError:
+                print('hash fail')
+                hashes = set()
 
         if unique_hash in hashes:
             print(f"game {unique_hash }already in DB")

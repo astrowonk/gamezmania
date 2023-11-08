@@ -93,6 +93,8 @@ def update_output(list_of_contents, list_of_names, list_of_dates):
     for g in out:
         res.extend([html.P(x) for x in g.upload_to_sql()])
 
+    print(res)
+
     for g in out:
         p = PredictBid()
         res.append(p.train(g.unique_hash))
