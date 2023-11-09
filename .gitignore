@@ -6,3 +6,4 @@ oh_hell.db
 *.js
 oh_hell.duckdb
 oh_hell.duckdb.wal
+*.sql
