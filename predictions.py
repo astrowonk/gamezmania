@@ -164,7 +164,6 @@ class PredictBid:
                 eval_set=[(X_test, y_test)])
         test_data['prediction'] = xgb.predict_proba(test_data[cols_train])[:,
                                                                            1]
-        con = create_engine("sqlite:///oh_hell.db")
         if upload:
             return self._upload(test_data, 'predictions_detail', unique_hash)
         else:
