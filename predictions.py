@@ -108,6 +108,30 @@ class PredictBid:
         for hash in tqdm(self.df_scores['unique_hash'].unique()):
             self.train(hash)
 
+    def make_all_alt_bids(self, all_data: pd.DataFrame, xgb, cols_train):
+        return pd.concat([
+            self.make_alt_bids(data, xgb, cols_train=cols_train)
+            for _player, data in all_data.groupby(['player', 'round'])
+        ])
+
+    @staticmethod
+    def make_alt_bids(one_player: pd.DataFrame, xgb, cols_train):
+        one_player['bid'] = (one_player['bid_div_total_cards'] *
+                             one_player['total_cards']).astype(int)
+        rec = one_player.iloc[0]
+        other_bids = rec['total_bid_minus_total_cards'] + rec[
+            'total_cards'] - rec['bid']
+        print(other_bids)
+        bid_range = pd.Series(range(0, rec['total_cards'] + 1))
+        N = rec['total_cards'] + 1
+        df = pd.concat(([one_player] * N)).reset_index(drop=True)
+        df['bid'] = bid_range
+        df['bid_div_total_cards'] = df['bid'] / df['total_cards']
+        df['total_bid_minus_total_cards'] = other_bids - df[
+            'total_cards'] + bid_range
+        df['prediction'] = xgb.predict_proba(df[cols_train])[:, 1]
+        return df.query('total_bid_minus_total_cards != 0')
+
     def train(self, unique_hash, upload=True):
         """Train excluding one game to not overfit"""
         train_data = self.final_training.query("unique_hash != @unique_hash")
@@ -164,7 +188,16 @@ class PredictBid:
                 eval_set=[(X_test, y_test)])
         test_data['prediction'] = xgb.predict_proba(test_data[cols_train])[:,
                                                                            1]
+
+        max_prediction = self.make_all_alt_bids(test_data,
+                                                xgb,
+                                                cols_train=cols_train)
+        res = ''
         if upload:
-            return self._upload(test_data, 'predictions_detail', unique_hash)
+            res += self._upload(test_data, 'predictions_detail',
+                                unique_hash) + '\n'
+            res += self._upload(max_prediction, 'prediction_alt_bids_detail',
+                                unique_hash)
+            return res
         else:
             return xgb
