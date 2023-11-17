@@ -79,8 +79,9 @@ class PredictBid:
             score_data_training).reset_index()
         dealer_map = self.df_rounds.query('hand == 1').set_index(
             ['unique_hash', 'round', 'player'])['card_order']
-        self.final_training = self.final_training.set_index(
-            ['unique_hash', 'round', 'player']).join(dealer_map).reset_index()
+        self.final_training = self.final_training.set_index([
+            'unique_hash', 'round', 'player'
+        ]).join(dealer_map).reset_index().query('total_cards >= 4')
 
     def _upload(self, data: pd.DataFrame, table_name: str, unique_hash: str):
         engine = create_engine("sqlite:///oh_hell.db")
@@ -105,7 +106,21 @@ class PredictBid:
         return f'success for {table_name}'
 
     def train_and_upload_all(self):
-        for hash in tqdm(self.df_scores['unique_hash'].unique()):
+        engine = create_engine("sqlite:///oh_hell.db")
+        with engine.connect() as con:
+            try:
+                hashes = {
+                    x[0]
+                    for x in con.execute(
+                        text(
+                            f"select distinct (unique_hash) from predictions_detail;"
+                        ))
+                }
+            except OperationalError:
+                print('hash fail')
+                hashes = set()
+        score_hash_set = set(self.df_scores['unique_hash'].unique())
+        for hash in tqdm(score_hash_set.difference(hashes)):
             self.train(hash)
 
     def make_all_alt_bids(self, all_data: pd.DataFrame, xgb, cols_train):
@@ -136,12 +151,12 @@ class PredictBid:
         """Train excluding one game to not overfit"""
         train_data = self.final_training.query("unique_hash != @unique_hash")
         test_data = self.final_training.query("unique_hash == @unique_hash")
-        xgb = XGBClassifier(n_estimators=130,
+        xgb = XGBClassifier(n_estimators=200,
                             min_child_weight=1.5,
                             eval_metric='logloss',
                             early_stopping_rounds=10,
                             learning_rate=.05,
-                            max_depth=5,
+                            max_depth=6,
                             objective='binary:logistic',
                             random_state=42)
 
