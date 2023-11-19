@@ -1,6 +1,9 @@
 import base64
 import json
 from dash import Dash, dcc, html, dash_table, Input, Output, State, callback
+from dash.exceptions import PreventUpdate
+
+import sqlite3
 
 import dash_bootstrap_components as dbc
 from gamezmania import Gamezmania
@@ -48,12 +51,15 @@ tab1 = dbc.Tab(
     label="Upload JSON")
 
 tab2 = dbc.Tab(label="Add Player Name Mapping",
-               children=(dbc.InputGroup([
-                   dbc.InputGroupText('Add New Player ID Mapping', ),
-                   dbc.Input(id='player-id', placeholder="ID String"),
-                   dbc.Input(id='player-name', placeholder="Player Name"),
-                   dbc.Button(id='player-button', children="Submit"),
-               ])))
+               children=[
+                   dbc.InputGroup([
+                       dbc.InputGroupText('Add New Player ID Mapping', ),
+                       dbc.Input(id='player-id', placeholder="ID String"),
+                       dbc.Input(id='player-name', placeholder="Player Name"),
+                       dbc.Button(id='player-button', children="Submit"),
+                   ]),
+                   html.Div(id='player-map-response')
+               ])
 
 tab3 = dbc.Tab([
     dcc.Markdown("""### How to get game JSON DATA
@@ -100,6 +106,19 @@ def update_output(list_of_contents, list_of_names, list_of_dates):
         res.append(p.train(g.unique_hash))
 
     return res
+
+
+@callback(Output('player-map-response', 'children'),
+          Input('player-button', 'n_clicks'), State('player-id', 'value'),
+          State('player-name', 'value'))
+def process_button(_, player_id, player_name):
+    if not (player_id and player_name):
+        raise PreventUpdate
+    with sqlite3.connect("oh_hell.db") as con:
+        res = con.execute(
+            "insert into player_names(player_id,player_name) VALUES (?,?);",
+            parameters=(player_id, player_name))
+    return str(res)
 
 
 if __name__ == '__main__':
