@@ -6,5 +6,5 @@ oh_hell.db
 *.js
 *.sql
 *.duckdb
-
+!make_indices.sql
 *duckdb.wal
