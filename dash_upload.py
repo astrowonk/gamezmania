@@ -118,7 +118,7 @@ def process_button(_, player_id, player_name):
         cursor = con.cursor()
         res = cursor.execute(
             "insert into player_names(player_id,player_name) VALUES (?,?);",
-            parameters=(player_id, player_name))
+            (player_id, player_name))
     return str(res)
 
 
