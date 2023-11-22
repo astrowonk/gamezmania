@@ -114,8 +114,9 @@ def update_output(list_of_contents, list_of_names, list_of_dates):
 def process_button(_, player_id, player_name):
     if not (player_id and player_name):
         raise PreventUpdate
-    with sqlite3.connect("oh_hell.db").cursor() as con:
-        res = con.execute(
+    with sqlite3.connect("oh_hell.db") as con:
+        cursor = con.cursor()
+        res = cursor.execute(
             "insert into player_names(player_id,player_name) VALUES (?,?);",
             parameters=(player_id, player_name))
     return str(res)
