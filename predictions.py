@@ -63,6 +63,13 @@ class PredictBid:
                 'total_cards',
                 'total_bid_minus_total_cards',
             ]]
+        double_deck_map = score_data_training.reset_index().groupby(
+            ['unique_hash'])['total_cards'].max()
+        player_count = score_data_training.reset_index().groupby(
+            ['unique_hash'])['player'].nunique()
+
+        deck_map = (double_deck_map * player_count) // 52
+
         trump_data = pd.get_dummies(
             self.df_rounds.query('is_trump == True')['card_rank'],
             prefix='trump').astype('int')
@@ -77,6 +84,8 @@ class PredictBid:
             ['unique_hash', 'player', 'round'])[cols].sum()
         self.final_training = df_training_cards.join(
             score_data_training).reset_index()
+        self.final_training['n_decks'] = self.final_training[
+            'unique_hash'].map(deck_map)
         dealer_map = self.df_rounds.query('hand == 1').set_index(
             ['unique_hash', 'round', 'player'])['card_order']
         self.final_training = self.final_training.set_index([
@@ -192,6 +201,7 @@ class PredictBid:
             'trump_jack',
             'trump_king',
             'trump_queen',
+            'n_decks',
         ]
         X = train_data[cols_train]
         y = train_data['made_bid']
