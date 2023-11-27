@@ -202,12 +202,13 @@ class PredictBid:
         xgb.fit(X_train.drop(columns=['taken_minus_bid'], errors='ignore'),
                 y_train,
                 eval_set=[(X_test, y_test)])
-        test_data['prediction'] = xgb.predict_proba(test_data[COLS_TRAIN])[:,
-                                                                           1]
+        if upload and not test_data.empty:
+            test_data['prediction'] = xgb.predict_proba(
+                test_data[COLS_TRAIN])[:, 1]
 
-        max_prediction = self.make_all_alt_bids(test_data,
-                                                xgb,
-                                                cols_train=COLS_TRAIN)
+            max_prediction = self.make_all_alt_bids(test_data,
+                                                    xgb,
+                                                    cols_train=COLS_TRAIN)
         res = ''
         if upload:
             res += self._upload(test_data, 'predictions_detail',
