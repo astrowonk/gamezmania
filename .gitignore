@@ -9,3 +9,4 @@ oh_hell.db
 !make_indices.sql
 *duckdb.wal
 oh_hell.db.backup
+*.db

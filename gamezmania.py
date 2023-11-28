@@ -23,6 +23,7 @@ class Gamezmania():
     """read and parse a json from cardzmania"""
 
     def __init__(self,
+                 db_name='oh_hell.db',
                  filename=None,
                  raw_data=None,
                  custom_player_map=None) -> None:
@@ -34,6 +35,7 @@ class Gamezmania():
             with open(filename, 'r') as j:
                 self.raw_data = json.load(j)
 
+        self.db_name = db_name
         self.file_name = filename
         self.custom_player_map = custom_player_map
 
@@ -140,7 +142,7 @@ class Gamezmania():
             rank, suit = self.parse_card_string(row['tp'])
             self.trump_map[f"{round + 1}_{suit}"] = True
 
-    def make_score_dataframe(self):
+    def make_score_dataframe(self) -> pd.DataFrame:
         """make a datafraem of the scores"""
 
         out = []
@@ -168,7 +170,7 @@ class Gamezmania():
         return df
 
     def _upload(self, data: pd.DataFrame, table_name: str):
-        engine = create_engine("sqlite:///oh_hell.db")
+        engine = create_engine(f"sqlite:///{self.db_name}")
         with engine.connect() as con:
             try:
                 hashes = [

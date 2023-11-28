@@ -6,6 +6,41 @@ from sklearn.model_selection import train_test_split
 from sqlalchemy.exc import OperationalError
 from tqdm.notebook import tqdm
 
+COLS_TRAIN = [
+    'is_trump',
+    'card_rank_2',
+    'card_rank_3',
+    'card_rank_4',
+    'card_rank_5',
+    'card_rank_6',
+    'card_rank_7',
+    'card_rank_8',
+    'card_rank_9',
+    'card_rank_T',
+    'card_rank_ace',
+    'card_rank_jack',
+    'card_rank_king',
+    'card_rank_queen',
+    'bid_div_total_cards',
+    'total_cards',
+    'total_bid_minus_total_cards',
+    'card_order',
+    'trump_2',
+    'trump_3',
+    'trump_4',
+    'trump_5',
+    'trump_6',
+    'trump_7',
+    'trump_8',
+    'trump_9',
+    'trump_T',
+    'trump_ace',
+    'trump_jack',
+    'trump_king',
+    'trump_queen',
+    'n_decks',
+]
+
 
 def make_delta_columns(df, column1, column2):
     """Add a column that is the difference between two columns.
@@ -42,8 +77,8 @@ def make_ratio_columns(df, column1, column2):
 
 class PredictBid:
 
-    def __init__(self) -> None:
-        con = create_engine("sqlite:///oh_hell.db")
+    def __init__(self, db_name='oh_hell.db') -> None:
+        con = create_engine(f"sqlite:///{db_name}")
         self.df_rounds = pd.read_sql("Select * from rounds_view; ", con=con)
 
         self.df_scores = pd.read_sql("Select * from scores_view; ", con=con)
@@ -169,41 +204,7 @@ class PredictBid:
                             objective='binary:logistic',
                             random_state=42)
 
-        cols_train = [
-            'is_trump',
-            'card_rank_2',
-            'card_rank_3',
-            'card_rank_4',
-            'card_rank_5',
-            'card_rank_6',
-            'card_rank_7',
-            'card_rank_8',
-            'card_rank_9',
-            'card_rank_T',
-            'card_rank_ace',
-            'card_rank_jack',
-            'card_rank_king',
-            'card_rank_queen',
-            'bid_div_total_cards',
-            'total_cards',
-            'total_bid_minus_total_cards',
-            'card_order',
-            'trump_2',
-            'trump_3',
-            'trump_4',
-            'trump_5',
-            'trump_6',
-            'trump_7',
-            'trump_8',
-            'trump_9',
-            'trump_T',
-            'trump_ace',
-            'trump_jack',
-            'trump_king',
-            'trump_queen',
-            'n_decks',
-        ]
-        X = train_data[cols_train]
+        X = train_data[COLS_TRAIN]
         y = train_data['made_bid']
         X_train, X_test, y_train, y_test = train_test_split(X,
                                                             y,
@@ -211,12 +212,13 @@ class PredictBid:
         xgb.fit(X_train.drop(columns=['taken_minus_bid'], errors='ignore'),
                 y_train,
                 eval_set=[(X_test, y_test)])
-        test_data['prediction'] = xgb.predict_proba(test_data[cols_train])[:,
-                                                                           1]
+        if upload and not test_data.empty:
+            test_data['prediction'] = xgb.predict_proba(
+                test_data[COLS_TRAIN])[:, 1]
 
-        max_prediction = self.make_all_alt_bids(test_data,
-                                                xgb,
-                                                cols_train=cols_train)
+            max_prediction = self.make_all_alt_bids(test_data,
+                                                    xgb,
+                                                    cols_train=COLS_TRAIN)
         res = ''
         if upload:
             res += self._upload(test_data, 'predictions_detail',
