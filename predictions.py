@@ -38,6 +38,19 @@ COLS_TRAIN = [
     'trump_jack',
     'trump_king',
     'trump_queen',
+    'singles_2',
+    'singles_3',
+    'singles_4',
+    'singles_5',
+    'singles_6',
+    'singles_7',
+    'singles_8',
+    'singles_9',
+    'singles_T',
+    'singles_ace',
+    'singles_jack',
+    'singles_king',
+    'singles_queen',
     'n_decks',
 ]
 
@@ -108,13 +121,18 @@ class PredictBid:
         trump_data = pd.get_dummies(
             self.df_rounds.query('is_trump == True')['card_rank'],
             prefix='trump').astype('int')
+
+        singleton_data = pd.get_dummies(
+            self.df_rounds.query('n_cards_suit_round == 1')['card_rank'],
+            prefix='singles').astype('int')
         score_data_training['made_bid'] = (
             score_data_training['taken_minus_bid'] == 0).astype(int)
         df_training = pd.get_dummies(self.df_rounds, columns=['card_rank'])
         df_training = df_training.join(trump_data).fillna(0)
+        df_training = df_training.join(singleton_data).fillna(0)
         cols = ['is_trump'] + [
             col for col in df_training.columns if col.startswith('card_rank_')
-        ] + list(trump_data.columns)
+        ] + list(trump_data.columns) + list(singleton_data.columns)
         df_training_cards = df_training.groupby(
             ['unique_hash', 'player', 'round'])[cols].sum()
         self.final_training = df_training_cards.join(
@@ -180,7 +198,6 @@ class PredictBid:
         rec = one_player.iloc[0]
         other_bids = rec['total_bid_minus_total_cards'] + rec[
             'total_cards'] - rec['bid']
-        print(other_bids)
         bid_range = pd.Series(range(0, rec['total_cards'] + 1))
         N = rec['total_cards'] + 1
         df = pd.concat(([one_player] * N)).reset_index(drop=True)
