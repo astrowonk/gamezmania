@@ -213,7 +213,7 @@ class PredictBid:
         train_data = self.final_training.query("unique_hash != @unique_hash")
         test_data = self.final_training.query("unique_hash == @unique_hash")
         xgb = XGBClassifier(n_estimators=200,
-                            min_child_weight=1.5,
+                            min_child_weight=1.6,
                             eval_metric='logloss',
                             early_stopping_rounds=10,
                             learning_rate=.05,
