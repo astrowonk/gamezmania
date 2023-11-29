@@ -46,7 +46,7 @@ tab1 = dbc.Tab(
             },
             # Allow multiple files to be uploaded
             multiple=True),
-        html.Div(id='output-data-upload'),
+        dbc.Spinner(html.Div(id='output-data-upload')),
     ]),
     label="Upload JSON")
 
