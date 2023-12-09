@@ -52,6 +52,7 @@ COLS_TRAIN = [
     'singles_king',
     'singles_queen',
     'n_decks',
+    'player_count',
 ]
 
 
@@ -141,6 +142,8 @@ class PredictBid:
             'unique_hash'].map(deck_map)
         dealer_map = self.df_rounds.query('hand == 1').set_index(
             ['unique_hash', 'round', 'player'])['card_order']
+        self.final_training['player_count'] = self.final_training[
+            'unique_hash'].map(player_count)
         self.final_training = self.final_training.set_index([
             'unique_hash', 'round', 'player'
         ]).join(dealer_map).reset_index().query('total_cards >= 4')
@@ -217,7 +220,7 @@ class PredictBid:
                             eval_metric='logloss',
                             early_stopping_rounds=10,
                             learning_rate=.05,
-                            max_depth=6,
+                            max_depth=4,
                             objective='binary:logistic',
                             random_state=42)
 

@@ -10,3 +10,4 @@ oh_hell.db
 *duckdb.wal
 oh_hell.db.backup
 *.db
+*.db.*
