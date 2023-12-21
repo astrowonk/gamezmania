@@ -8,19 +8,58 @@ from tqdm.notebook import tqdm
 
 COLS_TRAIN = [
     'is_trump',
-    'card_rank_2',
-    'card_rank_3',
-    'card_rank_4',
-    'card_rank_5',
-    'card_rank_6',
-    'card_rank_7',
-    'card_rank_8',
-    'card_rank_9',
-    'card_rank_T',
-    'card_rank_ace',
-    'card_rank_jack',
-    'card_rank_king',
-    'card_rank_queen',
+    'card_rank_hearts_2',
+    'card_rank_hearts_3',
+    'card_rank_hearts_4',
+    'card_rank_hearts_5',
+    'card_rank_hearts_6',
+    'card_rank_hearts_7',
+    'card_rank_hearts_8',
+    'card_rank_hearts_9',
+    'card_rank_hearts_T',
+    'card_rank_hearts_ace',
+    'card_rank_hearts_jack',
+    'card_rank_hearts_king',
+    'card_rank_hearts_queen',
+    'card_rank_clubs_2',
+    'card_rank_clubs_3',
+    'card_rank_clubs_4',
+    'card_rank_clubs_5',
+    'card_rank_clubs_6',
+    'card_rank_clubs_7',
+    'card_rank_clubs_8',
+    'card_rank_clubs_9',
+    'card_rank_clubs_T',
+    'card_rank_clubs_ace',
+    'card_rank_clubs_jack',
+    'card_rank_clubs_king',
+    'card_rank_clubs_queen',
+    'card_rank_diamonds_2',
+    'card_rank_diamonds_3',
+    'card_rank_diamonds_4',
+    'card_rank_diamonds_5',
+    'card_rank_diamonds_6',
+    'card_rank_diamonds_7',
+    'card_rank_diamonds_8',
+    'card_rank_diamonds_9',
+    'card_rank_diamonds_T',
+    'card_rank_diamonds_ace',
+    'card_rank_diamonds_jack',
+    'card_rank_diamonds_king',
+    'card_rank_diamonds_queen',
+    'card_rank_spades_2',
+    'card_rank_spades_3',
+    'card_rank_spades_4',
+    'card_rank_spades_5',
+    'card_rank_spades_6',
+    'card_rank_spades_7',
+    'card_rank_spades_8',
+    'card_rank_spades_9',
+    'card_rank_spades_T',
+    'card_rank_spades_ace',
+    'card_rank_spades_jack',
+    'card_rank_spades_king',
+    'card_rank_spades_queen',
     'bid_div_total_cards',
     'total_cards',
     'total_bid_minus_total_cards',
@@ -129,8 +168,19 @@ class PredictBid:
         score_data_training['made_bid'] = (
             score_data_training['taken_minus_bid'] == 0).astype(int)
         df_training = pd.get_dummies(self.df_rounds, columns=['card_rank'])
+
+        training_dfs = [
+            pd.get_dummies(
+                self.df_rounds.query("card_suit == @suit")['card_rank'],
+                columns=['card_rank'],
+                prefix=f"card_rank_{suit}").fillna(0).astype(int)
+            for suit in ['hearts', 'clubs', 'diamonds', 'spades']
+        ]
+        df_training = pd.concat(training_dfs).fillna(0).astype(int)
+        df_training = self.df_rounds.join(df_training)
         df_training = df_training.join(trump_data).fillna(0)
         df_training = df_training.join(singleton_data).fillna(0)
+        print(df_training.columns)
         cols = ['is_trump'] + [
             col for col in df_training.columns if col.startswith('card_rank_')
         ] + list(trump_data.columns) + list(singleton_data.columns)
@@ -216,11 +266,11 @@ class PredictBid:
         train_data = self.final_training.query("unique_hash != @unique_hash")
         test_data = self.final_training.query("unique_hash == @unique_hash")
         xgb = XGBClassifier(n_estimators=200,
-                            min_child_weight=1.6,
+                            min_child_weight=1.7,
                             eval_metric='logloss',
                             early_stopping_rounds=10,
                             learning_rate=.05,
-                            max_depth=4,
+                            max_depth=5,
                             objective='binary:logistic',
                             random_state=42)
 
