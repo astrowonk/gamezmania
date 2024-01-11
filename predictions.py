@@ -5,6 +5,7 @@ from sqlalchemy import text
 from sklearn.model_selection import train_test_split
 from sqlalchemy.exc import OperationalError
 from tqdm.notebook import tqdm
+import statsmodels.api as sm
 
 COLS_TRAIN = [
     'is_trump',
@@ -298,3 +299,82 @@ class PredictBid:
             return res
         else:
             return xgb
+
+
+class PlayerInfluence():
+
+    def __init__(self, db_name='oh_hell.db') -> None:
+        self.db_name = db_name
+
+    def process_data(self):
+        con = create_engine(f"sqlite:///{self.db_name}")
+        df = pd.read_sql("Select * from scores_view; ", con=con)
+        df['max_round'] = df.groupby(['unique_hash'])['round'].transform(max)
+        df['made_bid'] = (df['taken'] == df['bid'])
+
+        df['made_bid_fraction'] = df.groupby(['player', 'unique_hash'
+                                              ])['made_bid'].transform('mean')
+
+        final_scores = df.query('round == max_round')
+        temp_data = pd.get_dummies(final_scores,
+                                   columns=['player_name'],
+                                   prefix='player_name')
+        mylist = [x for x in temp_data.columns if x.startswith('player_name')]
+        fitting_data = temp_data.groupby('unique_hash')[mylist].sum()
+        temp_fit_data = final_scores.set_index('unique_hash').join(
+            fitting_data)
+        temp_fit_data = final_scores.set_index('unique_hash').join(
+            fitting_data)
+        temp_fit_data['max_score'] = temp_fit_data.groupby(
+            'unique_hash')['points'].transform(max)
+        temp_fit_data['norm_score'] = temp_fit_data['points'] / temp_fit_data[
+            'max_score']
+        temp_fit_data['win_flag'] = (
+            temp_fit_data['points'] == temp_fit_data['max_score']).astype(int)
+        temp_fit_data['score_rank'] = temp_fit_data.groupby(
+            'unique_hash')['points'].rank(ascending=False)
+        temp_fit_data['n_players'] = temp_fit_data.groupby(
+            'unique_hash')['player'].transform('nunique')
+        temp_fit_data.to_sql('linear_model_data', con=con, if_exists='replace')
+
+    def load_data_one_user(self, user, min=10, n=150):
+        con = create_engine(f"sqlite:///{self.db_name}")
+        temp_fit_data = pd.read_sql(
+            "select * from linear_model_data where player_name = ? order by file_name DESC limit ?",
+            params=(user, n),
+            con=con)
+        cols = [
+            x for x in temp_fit_data.columns if x.startswith('player_name_')
+        ]
+        other_cols = [
+            x for x in temp_fit_data.columns
+            if not x.startswith('player_name_')
+        ]
+        col_series = (temp_fit_data[cols].sum() > 10)
+
+        qualified_user_variables = [
+            x for x, y in col_series.to_dict().items() if y
+        ]
+        return temp_fit_data, qualified_user_variables
+
+    def build_model(self, thedata, name, dependent, fitting_variables):
+        assert dependent in [
+            'made_bid_fraction',
+            'max_score',
+            'norm_score',
+            'win_flag',
+        ]
+        fitting_variables = [
+            x for x in fitting_variables if x != f"player_name_{name}"
+        ]
+        X = thedata[fitting_variables]
+        X = sm.add_constant(X)
+        y = thedata[dependent]
+        model = sm.OLS(y, X)
+        results = model.fit()
+        return results.summary2().tables[1].sort_values('Coef.')
+
+
+if __name__ == '__main__':
+    m = PlayerInfluence()
+    m.process_data()
