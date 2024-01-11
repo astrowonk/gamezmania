@@ -337,7 +337,11 @@ class PlayerInfluence():
             'unique_hash')['player'].transform('nunique')
         temp_fit_data.to_sql('linear_model_data', con=con, if_exists='replace')
 
-    def load_data_one_user(self, user, min=10, n=150):
+    def get_linear_fit_menu_data(self,
+                                 user,
+                                 min_count=10,
+                                 n=150,
+                                 return_users=False):
         con = create_engine(f"sqlite:///{self.db_name}")
         temp_fit_data = pd.read_sql(
             "select * from linear_model_data where player_name = ? order by file_name DESC limit ?",
@@ -350,17 +354,22 @@ class PlayerInfluence():
             x for x in temp_fit_data.columns
             if not x.startswith('player_name_')
         ]
-        col_series = (temp_fit_data[cols].sum() > 10)
+        col_series = (temp_fit_data[cols].sum() > min_count)
 
-        qualified_user_variables = [
-            x for x, y in col_series.to_dict().items() if y
-        ]
-        return temp_fit_data, qualified_user_variables
+        qualified_user_variables = {
+            x: y
+            for x, y in temp_fit_data[cols].sum().to_dict().items()
+            if y > min_count
+        }
+
+        if return_users:
+            return qualified_user_variables
+        return temp_fit_data
 
     def build_model(self, thedata, name, dependent, fitting_variables):
         assert dependent in [
             'made_bid_fraction',
-            'max_score',
+            'score_rank',
             'norm_score',
             'win_flag',
         ]
