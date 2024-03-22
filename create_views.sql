@@ -126,7 +126,7 @@ from
 	/* predictions_detail_view(player_name,unique_hash,round,card_order,total_bid_minus_total_cards,bid,total_cards,made_bid,taken_minus_bid,prediction,is_trump) */
 ;
 
-create view if not exist most_set_games as
+create view if not exists most_set_games as
 select
 	avg(set_pct) set_percent,
 	file_name,
