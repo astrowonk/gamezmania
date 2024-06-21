@@ -179,13 +179,22 @@ class Gamezmania():
                             f"select distinct (unique_hash) from {table_name};"
                         ))
                 ]
+                file_names = [x[0] for x in con.execute(
+                        text(
+                            f"select distinct (file_name) from {table_name};"
+                        ))]
+                
             except OperationalError:
                 print('hash fail')
                 hashes = set()
+                file_names = set()
 
         if self.unique_hash in hashes:
             print(f"game {self.unique_hash }already in DB")
             return f'game already in {table_name} DB {self.unique_hash}'
+        if self.file_name in file_names:
+            print(f"game {self.file_name}already in DB")
+            return f'game already in {table_name} DB {self.file_name}'
         data.to_sql(table_name, con=engine, if_exists='append', index=False)
         print('successful upload')
 
