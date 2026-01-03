@@ -197,9 +197,11 @@ class PredictBid:
         df_training_cards = df_training.groupby(['unique_hash', 'player', 'round'])[cols].sum()
         self.final_training = df_training_cards.join(score_data_training).reset_index()
         self.final_training['n_decks'] = self.final_training['unique_hash'].map(deck_map)
-        dealer_map = self.df_rounds.query('hand == 1').set_index(
-            ['unique_hash', 'round', 'player']
-        )['card_order']
+        dealer_map = self.df_rounds.query('hand == 1').set_index([
+            'unique_hash',
+            'round',
+            'player',
+        ])['card_order']
         self.final_training['player_count'] = self.final_training['unique_hash'].map(
             player_count
         )
@@ -249,12 +251,10 @@ class PredictBid:
             self.train(hash)
 
     def make_all_alt_bids(self, all_data: pd.DataFrame, xgb, cols_train):
-        return pd.concat(
-            [
-                self.make_alt_bids(data, xgb, cols_train=cols_train)
-                for _player, data in all_data.groupby(['player', 'round'])
-            ]
-        )
+        return pd.concat([
+            self.make_alt_bids(data, xgb, cols_train=cols_train)
+            for _player, data in all_data.groupby(['player', 'round'])
+        ])
 
     @staticmethod
     def make_alt_bids(one_player: pd.DataFrame, xgb, cols_train):
@@ -315,7 +315,7 @@ class PlayerInfluence:
     def process_data(self):
         con = create_engine(f'sqlite:///{self.db_name}')
         df = pd.read_sql('Select * from scores_view; ', con=con)
-        df['max_round'] = df.groupby(['unique_hash'])['round'].transform(max)
+        df['max_round'] = df.groupby(['unique_hash'])['round'].transform('max')
         df['made_bid'] = df['taken'] == df['bid']
 
         df['made_bid_fraction'] = df.groupby(['player', 'unique_hash'])['made_bid'].transform(
